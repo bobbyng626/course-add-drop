@@ -1,5 +1,3 @@
-extern crate calamine;
-
 use std::io;
 use std::io::Read;
 
@@ -7,9 +5,6 @@ use std::fs::File;
 
 use std::error::Error;
 use std::process;
-
-use calamine::{Reader, open_workbook, Xlsx, DataType};
-
 
 // Global Constant
 const MAX_COURSE: usize = 10;
@@ -71,7 +66,7 @@ fn read_user_input()->char {
 
 fn read_student_info() -> Vec<Student> {
     let mut students: Vec<Student> = Vec::new();
-    let mut file = match csv::Reader::from_path("Student.csv"){
+    let mut file = match csv::Reader::from_path("data/Student.csv"){
         Ok(file) => file,
         Err(e) => panic!("Could not open Student.csv: {}", e.to_string()),
     };
@@ -86,8 +81,8 @@ fn read_course_info() -> Vec<Course> {
     let mut courses: Vec<Course> = Vec::new();
     let mut contents: String = String::new();
 
-    let mut file = match File::open("text.txt"){
-        Err(e) => panic!("Could not open Students Info.xlsx: {}", e.to_string()),
+    let mut file = match File::open("data/text.txt"){
+        Err(e) => panic!("Could not open text.txt: {}", e.to_string()),
         Ok(file) => file,
     };
     file.read_to_string(&mut contents)
@@ -192,22 +187,5 @@ fn print_course_info(course_list: &Vec<Course>, course_code: &String) {
             println!("Credit:  {}", course.credit);
             break;
         }
-    }
-}
-
-fn example() {
-    // opens a new workbook
-    // let mut path: String = from()
-    let mut workbook: Xlsx<_> = open_workbook("./Student.xlsx").expect("Cannot open file");
-    
-    // Read whole worksheet data and provide some statistics
-    if let Some(Ok(range)) = workbook.worksheet_range("Sheet1") {
-        let total_cells = range.get_size().0 * range.get_size().1;
-        let non_empty_cells: usize = range.used_cells().count();
-        println!("Found {} cells in 'Sheet1', including {} non empty cells",
-                 total_cells, non_empty_cells);
-        // alternatively, we can manually filter rows
-        assert_eq!(non_empty_cells, range.rows()
-            .flat_map(|r| r.iter().filter(|&c| c != &DataType::Empty)).count());
     }
 }
