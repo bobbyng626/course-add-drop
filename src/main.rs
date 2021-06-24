@@ -1,13 +1,10 @@
 use std::io;
 use std::io::Read;
-
 use std::fs::File;
 
-use std::error::Error;
-use std::process;
 
 // Global Constant
-const MAX_COURSE: usize = 10;
+// const stdin: Stdin = std::io::stdin();
 // Declare student struct
 struct Student {
     name: String,
@@ -16,6 +13,7 @@ struct Student {
     school: String,
     year: i32,
     credit: i32,
+    course_list: Vec<String>,
 }
 // Declare course struct
 struct Course {
@@ -25,8 +23,15 @@ struct Course {
 }
 // Store course info
 
+static mut STUDENT_LIST: Vec<Student> = Vec::new();
+static mut COURSE_LIST: Vec<Course> = Vec::new();
+
 // Store Student info
 fn main() {
+    unsafe {
+        STUDENT_LIST = read_student_info();
+        COURSE_LIST = read_course_info();
+    }
     loop {
         println!("Please select 1 function:
             0 - Quit
@@ -34,20 +39,31 @@ fn main() {
             2 - Print Selected Student
             3 - Print All Courses
             4 - Print Selected Course
+            5 - Add A Course
             * - Quit"
         );
-        let mut user_char: char = read_user_input();
-        let mut student_list = read_student_info();
-        let mut course_list = read_course_info();
-        match user_char {
-            '0' => break,
-            '1' => print_all_student_info(&student_list),
-            '2' => print_student_info(&student_list),
-            '3' => print_all_course_info(&course_list),
-            '4' => print_single_course_info(&course_list),
-            '*' => break,
-            _ => println!("Error"),
+        
+        unsafe {
+            let user_char: char = read_user_input();
+            match user_char {
+                '0' => break,
+                '1' => print_all_student_info(&STUDENT_LIST),
+                '2' => print_student_info(&STUDENT_LIST),
+                '3' => print_all_course_info(&COURSE_LIST),
+                '4' => print_single_course_info(&COURSE_LIST),
+                '5' => add_a_course(&STUDENT_LIST, &COURSE_LIST),
+                '*' => break,
+                _ => println!("Error"),
+            }
+            for item in &mut STUDENT_LIST {
+                for another in &item.course_list {
+                    println!("{}", another);
+                }
+            }
         }
+
+        // let student_list = read_student_info();
+        // let course_list = read_course_info();
     }
 }
 
@@ -60,7 +76,7 @@ fn read_user_input()->char {
                 None => { return '*'; }
             }
         }
-        Err(e) => { return '*' }
+        Err(_e) => { return '*' }
     }
 }
 
@@ -71,7 +87,7 @@ fn read_student_info() -> Vec<Student> {
         Err(e) => panic!("Could not open Student.csv: {}", e.to_string()),
     };
     for line in file.records().into_iter() { // loop into all records
-        let mut record = line.unwrap(); // take out Ok()
+        let record = line.unwrap(); // take out Ok()
         students.push(match_csv(&record));
     }
     return students;
@@ -89,21 +105,20 @@ fn read_course_info() -> Vec<Course> {
         .expect("Cannot read the file");
     
     for line in contents.lines() {
-        let mut course_detail_a: Vec<&str> = line.split(" - ").collect();
-        let mut course_detail_b: Vec<&str> = course_detail_a[1].split(" (").collect();
-        let mut course_detail_c: Vec<&str> = course_detail_b[1].split(" units").collect();
-        let mut course_code: &str = course_detail_a[0].trim();
-        let mut course_name: &str = course_detail_b[0].trim();
-        let mut course_credit = course_detail_c[0];
+        let course_detail_a: Vec<&str> = line.split(" - ").collect();
+        let course_detail_b: Vec<&str> = course_detail_a[1].split(" (").collect();
+        let course_detail_c: Vec<&str> = course_detail_b[1].split(" units").collect();
+        let course_code: &str = course_detail_a[0].trim();
+        let course_name: &str = course_detail_b[0].trim();
+        let course_credit = course_detail_c[0];
 
-        let mut course: Course = {Course {
+        let course: Course = {Course {
             code: course_code.to_string(),
             name: course_name.to_string(),
             credit: course_credit.to_string(),
         }};
         courses.push(course);
     }
-
     return courses;
 }
 
@@ -125,9 +140,9 @@ fn print_all_student_info(students: &Vec<Student>) {
 // 2
 fn print_student_info(students: &Vec<Student>) {
     let mut student_string: String = String::new();
-    let mut stdin = io::stdin();
+    let stdin = io::stdin();
     println!("Enter a student ID: ");
-    stdin.read_line(&mut student_string);
+    stdin.read_line(&mut student_string).unwrap();
     for student in students {
         if student_string.trim() == student.id.trim() {
             println!("Name:   {}", student.name);
@@ -136,6 +151,10 @@ fn print_student_info(students: &Vec<Student>) {
             println!("School: {}", student.school);
             println!("Year:   {}", student.year);
             println!("Credit: {}", student.credit);
+            println!("Course: {:?}", student.course_list);
+            // for detail in student.course_list {
+
+            // }
             println!("=========================");
             break;
         }
@@ -150,6 +169,7 @@ fn match_csv(row: &csv::StringRecord) -> Student{
         school: row[3].to_string(),
         year: row[4].to_string().parse::<i32>().unwrap(),
         credit: row[5].to_string().parse::<i32>().unwrap(),
+        course_list: Vec::new(),
     }
 }
 
@@ -160,15 +180,14 @@ fn print_all_course_info(course_list: &Vec<Course>) {
         println!("Code:    {}", course.code);
         println!("Name:    {}", course.name);
         println!("Credit:  {}", course.credit);
-        // print_course_info(course_list, &course.code);
     }
 }
 // 4
 fn print_single_course_info(course_list: &Vec<Course>) {
     let mut user_string: String = String::new();
-    let mut stdin = io::stdin();
+    let stdin = io::stdin();
     println!("Enter a course code: ");
-    stdin.read_line(&mut user_string);
+    stdin.read_line(&mut user_string).unwrap();
     for course in course_list {
         if user_string.trim() == course.code.trim() {
             println!("Code:    {}", course.code);
@@ -178,14 +197,105 @@ fn print_single_course_info(course_list: &Vec<Course>) {
         }
     }
 }
- 
-fn print_course_info(course_list: &Vec<Course>, course_code: &String) {
-    for course in course_list {
-        if &course.code == course_code {
-            println!("Code:    {}", course.code);
-            println!("Name:    {}", course.name);
-            println!("Credit:  {}", course.credit);
-            break;
+
+// 5
+fn add_a_course(students: &Vec<Student>, courses: &Vec<Course>) {
+    // assume all data is fine and correct first
+    let mut student = add_a_course_step_1(students);
+    let mut course = add_a_course_step_2(courses);
+    add_a_course_step_3(&mut student, &mut course);
+}
+
+fn add_a_course_step_1(students: &Vec<Student>) -> &Student { // choose a student
+    println!("/////////////////////////////////");
+    println!("/////////////////////////////////");
+    println!("/////////////Step 1//////////////");
+    println!("/////////////////////////////////");
+    println!("/////////////////////////////////");
+    println!("");
+    println!("Choose a STUDENT:
+    (id): input id for selecting a student
+    999: print all student information");
+    let mut student_string: String = String::new();
+    let stdin = std::io::stdin();
+    stdin.read_line(&mut student_string).unwrap();
+    match student_string.trim() {
+        "999" => {
+            print_all_student_info(students);
+            return add_a_course_step_1(students);
+        },
+        _ => {
+            for student in students {
+                if student_string.trim() == student.id.trim() {
+                    println!("=========STUDENT==========");
+                    println!("Name:   {}", student.name);
+                    println!("Id:     {}", student.id);
+                    println!("ITSC:   {}", student.itsc);
+                    println!("School: {}", student.school);
+                    println!("Year:   {}", student.year);
+                    println!("Credit: {}", student.credit);
+                    println!("=========================");
+                    return student;
+                }
+            }
+            return &students[0];
+        }
+    }
+}
+
+fn add_a_course_step_2(courses: &Vec<Course>) -> &Course { // choose a course
+    println!("/////////////////////////////////");
+    println!("/////////////////////////////////");
+    println!("/////////////Step 2//////////////");
+    println!("/////////////////////////////////");
+    println!("/////////////////////////////////");
+    println!("");
+    println!("Choose a Course:
+    (code): input course code 
+    999: print all course information");
+    let mut course_string: String = String::new();
+    let stdin = std::io::stdin();
+    stdin.read_line(&mut course_string).unwrap();
+    match course_string.trim() {
+        "999" => {
+            print_all_course_info(courses);
+            return add_a_course_step_2(courses);
+        },
+        _ => {
+            for course in courses {
+                if course_string.trim() == course.code.trim() {
+                    println!("=========COURSE==========");
+                    println!("Code:    {}", course.code);
+                    println!("Name:    {}", course.name);
+                    println!("Credit:  {}", course.credit);
+                    println!("=========================");
+                    return course;
+                }
+            }
+            return &courses[0];
+        }
+    }
+}
+
+fn add_a_course_step_3(student: &Student, course: &Course) { // append course code to student
+    println!("/////////////////////////////////");
+    println!("/////////////////////////////////");
+    println!("/////////////Step 3//////////////");
+    println!("/////////////////////////////////");
+    println!("/////////////////////////////////");
+    println!("");
+    println!("Adding {} to Student {} ({})", course.code, student.name, student.id);
+    let course_code = &course.code;
+    unsafe {
+        for (pos, e) in &mut STUDENT_LIST.iter().enumerate() {
+            // println!("{}", student.credit.)
+            let mut total_credit: i32 = student.credit + course.credit.to_string().parse::<i32>().unwrap();
+            if e.id == student.id {
+                if total_credit < 18 {
+                    STUDENT_LIST[pos].course_list.push(course_code.to_string());
+                    STUDENT_LIST[pos].credit = total_credit;
+                }
+            }
         }
     }
 }
