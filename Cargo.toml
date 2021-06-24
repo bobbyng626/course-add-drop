@@ -1,0 +1,10 @@
+[package]
+name = "course-add-drop"
+version = "0.1.0"
+authors = ["Bobby Ng <bobbyng0920@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+csv = "1.1"
